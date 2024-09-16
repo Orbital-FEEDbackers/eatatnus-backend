@@ -1,0 +1,37 @@
+{
+  "name": "eatatnus-backend",
+  "type": "module",
+  "version": "0.0.0",
+  "private": true,
+  "scripts": {
+    "build": "npx tsc && cp -r ./credentials ./dist || Copy-Item ./credentials ./dist -Recurse",
+    "start": "node dist/app.js",
+    "dev": "tsx app.ts",
+    "test": "node --experimental-vm-modules node_modules/jest/bin/jest.js"
+  },
+  "dependencies": {
+    "@aws-sdk/client-s3": "^3.598.0",
+    "@aws-sdk/s3-request-presigner": "^3.598.0",
+    "@prisma/client": "^5.14.0",
+    "dotenv": "^16.4.5",
+    "express": "^4.19.2",
+    "firebase-admin": "^12.1.0",
+    "lodash-es": "^4.17.21",
+    "mime": "^4.0.3",
+    "stripe": "^16.6.0",
+    "tsx": "^4.15.5"
+  },
+  "devDependencies": {
+    "@types/express": "^4.17.21",
+    "@types/jest": "^29.5.12",
+    "@types/lodash-es": "^4.17.12",
+    "@types/node": "^20.12.12",
+    "jest": "^29.7.0",
+    "jest-mock-extended": "^3.0.7",
+    "prisma": "^5.14.0",
+    "ts-jest": "^29.2.4",
+    "ts-node": "^10.9.2",
+    "ts-node-dev": "^2.0.0",
+    "typescript": "^5.4.5"
+  }
+}

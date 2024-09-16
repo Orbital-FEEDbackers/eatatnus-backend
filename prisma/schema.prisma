@@ -1,0 +1,293 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+  previewFeatures = ["omitApi", "fullTextSearch"]
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id         Int      @id @default(autoincrement())
+  firebaseId String   @unique
+  email      String?  @unique
+  name       String?
+  createdAt  DateTime @default(now())
+  role       Role     @default(USER)
+  stripeAccountId String?
+
+  profile Profile?
+  reviews Review[]
+  replies Reply[]
+  stalls   Stall[]
+  caloricTracker CaloricTracker?
+  notifications Notification[]
+  orders Order[]
+}
+
+enum Role {
+  USER
+  BUSINESS
+  ADMIN
+}
+
+model Profile {
+  id    Int     @id @default(autoincrement())
+  bio   String?
+  image Image?
+
+  // One-to-one relations
+  // e.g. A profile can only be connected to one user
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade, onUpdate: Cascade)
+  userId Int  @unique
+}
+
+model Notification {
+  id       Int      @id @default(autoincrement())
+  message   String
+  createdAt DateTime @default(now())
+  read      Boolean  @default(false)
+
+  // One-to-many relations
+  user   User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  review Review? @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId Int?
+}
+
+model Review {
+  id          Int      @id @default(autoincrement())
+  rating      Int
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  replies Reply[]
+  images  Image[]
+  notifications Notification[]
+
+  reviewType ReviewType
+
+  // One-to-many relations
+  // e.g. A user can have many reviews
+  user      User?     @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId    Int?
+  stall     Stall?   @relation(fields: [stallId], references: [id])
+  stallId   Int?
+  canteen   Canteen? @relation(fields: [canteenId], references: [id])
+  canteenId Int?
+}
+
+enum ReviewType {
+  StallReview
+  OutletReview
+}
+
+model Canteen {
+  id          Int      @id @default(autoincrement())
+  name        String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  images  Image[]
+  stalls  Stall[]
+  reviews Review[]
+
+  // One-to-many relations
+  // e.g. A location can have many canteens
+  // - doesn't make sense in NUS but suppose we have a building with multiple canteens
+  location   Location? @relation(fields: [locationId], references: [id], onDelete: SetNull)
+  locationId Int?
+}
+
+model Stall {
+  id          Int      @id @default(autoincrement())
+  name        String
+  description String?
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  menu    Menu?
+  images  Image[]
+  reviews Review[]
+  orders  Order[]
+
+  // One-to-many relations
+  owner   User? @relation(fields: [ownerId], references: [id], onDelete: SetNull)
+  ownerId Int?
+  canteen   Canteen @relation(fields: [canteenId], references: [id])
+  canteenId Int
+}
+
+model Reply {
+  id Int @id @default(autoincrement())
+  body String
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  replies Reply[] @relation("ReplyToReply")
+
+  // One-to-many relations
+  user     User?   @relation(fields: [userId], references: [id], onDelete: SetNull)
+  userId   Int?
+  review   Review @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId Int
+  parent   Reply? @relation("ReplyToReply", fields: [parentId], references: [id])
+  parentId Int?
+}
+
+model Image {
+  id          Int      @id @default(autoincrement())
+  s3Key       String   @unique
+  description String?
+  createdAt   DateTime @default(now())
+
+  // One-to-one relations
+  // e.g. A image can only be connected to one profile
+  profile   Profile? @relation(fields: [profileId], references: [id], onDelete: Cascade)
+  profileId Int?     @unique
+
+  // One-to-many relations
+  review    Review?  @relation(fields: [reviewId], references: [id], onDelete: Cascade)
+  reviewId  Int?
+  canteen   Canteen? @relation(fields: [canteenId], references: [id], onDelete: Cascade)
+  canteenId Int?
+  stall     Stall?   @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  stallId   Int?
+}
+
+model Location {
+  id        Int    @id @default(autoincrement())
+  address   String @unique
+  latitude  Float
+  longitude Float
+
+  canteens Canteen[]
+}
+
+model Menu {
+  id    Int    @id @default(autoincrement())
+  items Food[]
+
+  // One-to-one relation
+  // e.g. A menu can only be connected to one stall
+  stall   Stall @relation(fields: [stallId], references: [id], onDelete: Cascade)
+  stallId Int   @unique
+}
+
+model Food {
+  id   Int    @id @default(autoincrement())
+  name String
+  
+  servingQty         Int?
+  servingUnit        String?
+  servingWeightGrams Int?
+  calories           Float?
+  totalFat           Float?
+  saturatedFat       Float?
+  cholesterol        Float?
+  sodium             Float?
+  totalCarbohydrate  Float?
+  dietaryFiber       Float?
+  sugars             Float?
+  protein            Float?
+  potassium          Float?
+
+  price Float?
+
+  // Many-to-many relations
+  // e.g. A food item can be in many menus
+  // e.g. A menu can have many food items
+  entries FoodsOnCaloricTrackerEntries[]
+  orders FoodsOnOrders[]
+
+  // One-to-many relations
+  menu Menu? @relation(fields: [menuId], references: [id], onDelete: SetNull)
+  menuId Int?
+}
+
+model CaloricTracker {
+  id Int @id @default(autoincrement())
+
+  caloricTrackerEntries CaloricTrackerEntry[]
+
+  // One-to-one relation
+  // i.e. A caloric tracker can only be connected to a user
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int @unique
+}
+
+model CaloricTrackerEntry {
+  id Int @id @default(autoincrement())
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  foods FoodsOnCaloricTrackerEntries[]
+
+  // One-to-many relation
+  // i.e. A caloric tracker entry can only be connected to one caloric tracker,
+  // A caloric tracker can have many caloric tracker entries
+  caloricTracker CaloricTracker @relation(fields: [caloricTrackerId], references: [id], onDelete: Cascade)
+  caloricTrackerId Int
+}
+
+model FoodsOnCaloricTrackerEntries {
+  count Int @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Many-to-many relation
+  // e.g. A food item can be in many caloric tracker entries
+  // e.g. A caloric tracker entry can have many food items
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId Int
+
+  caloricTrackerEntry CaloricTrackerEntry @relation(fields: [caloricTrackerEntryId], references: [id], onDelete: Cascade)
+  caloricTrackerEntryId Int
+
+  @@id([foodId, caloricTrackerEntryId])
+}
+
+model Order {
+  id Int @id @default(autoincrement())
+  fulfilled Boolean @default(false)
+  paid Boolean @default(false)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+  paidAt DateTime?
+
+  foods FoodsOnOrders[]
+
+  // One-to-many relation
+  // e.g. A food item can be in many orders
+  // e.g. An order can have many food items
+  user User @relation(fields: [userId], references: [id], onDelete: Cascade)
+  userId Int
+  stall Stall @relation(fields: [stallId], references: [id])
+  stallId Int
+}
+
+model FoodsOnOrders {
+  count Int @default(1)
+  createdAt   DateTime @default(now())
+  updatedAt   DateTime @updatedAt
+
+  // Many-to-many relation
+  // e.g. A food item can be in many caloric tracker entries
+  // e.g. A caloric tracker entry can have many food items
+  food Food @relation(fields: [foodId], references: [id], onDelete: Cascade)
+  foodId Int
+
+  order Order @relation(fields: [orderId], references: [id], onDelete: Cascade)
+  orderId Int
+
+  @@id([foodId, orderId])
+}
